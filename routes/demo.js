@@ -23,6 +23,29 @@ router.post("/signup", async function (req, res) {
   const enteredConfirmEmail = userData["confirm-email"];
   const enteredPassword = userData.password;
 
+  if (
+    !enteredEmail ||
+    !enteredConfirmEmail ||
+    !enteredPassword ||
+    enteredPassword.trim() < 6 ||
+    enteredEmail !== enteredConfirmEmail ||
+    !enteredEmail.includes("@")
+  ) {
+    console.log("Incorrect data");
+    return res.redirect("/signup");
+  }
+
+  // check whether the user/email already exists
+  const existingUser = await db
+    .getDb()
+    .collection("users")
+    .findOne({ email: enteredEmail });
+
+  if (existingUser) {
+    console.log("User already exists");
+    return res.redirect("/login");
+  }
+
   const hashedPassword = await bcrypt.hash(enteredPassword, 12);
 
   const user = {
@@ -55,11 +78,18 @@ router.post("/login", async function (req, res) {
     console.log("oops, could not log you in-passwords dont match");
     return res.redirect("/login");
   }
-  console.log("User is authenticated");
-  res.redirect("/admin");
+
+  req.session.user = { id: existingUser._Id, email: existingUser.email };
+  req.session.isAuthenticated = true;
+  req.session.save(function () {
+    res.redirect("/admin");
+  });
 });
 
 router.get("/admin", function (req, res) {
+  if (!req.session.isAuthenticated) {
+    return res.status(401).render("401");
+  }
   res.render("admin");
 });
 
