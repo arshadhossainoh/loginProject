@@ -33,6 +33,25 @@ app.use(
   })
 );
 
+app.use(async function (req, res, next) {
+  const user = req.session.user;
+  const isAuth = req.session.isAuthenticated;
+  // res.locals is used to store data
+
+  // here next() means request should move along to next middleware or route
+  if (!user || !isAuth) {
+    return next();
+  }
+  const userDoc = await db.getDb().collection("users").find({ _id: user.id });
+
+  const isAdmin = userDoc.isAdmin;
+
+  res.locals.isAuth = isAuth;
+  res.locals.isAdmin = isAdmin;
+
+  next();
+});
+
 app.use(demoRoutes);
 
 app.use(function (error, req, res, next) {
